@@ -8,13 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/vitaly-kashtalyan/hlk-sw16"
 	"net/http"
+	"os"
 	"strconv"
-)
-
-const (
-	//hlk_sw16
-	host = "192.168.0.200"
-	port = "8080"
 )
 
 type httpError struct {
@@ -28,10 +23,24 @@ type httpOkData struct {
 	Data    interface{} `json:"data" example:"interface{}"`
 }
 
+func init() {
+	if len(os.Getenv("HLK_SW16_HOST")) == 0 {
+		_ = os.Setenv("HLK_SW16_HOST", "192.168.0.200")
+	}
+
+	if len(os.Getenv("HLK_SW16_PORT")) == 0 {
+		_ = os.Setenv("HLK_SW16_PORT", "8080")
+	}
+
+	if len(os.Getenv("APP_PORT")) == 0 {
+		_ = os.Setenv("APP_PORT", "8082")
+	}
+}
+
 func main() {
 	// Runs the server
 	r := setup()
-	_ = r.Run(":8082") // listen and serve on 0.0.0.0:8082
+	_ = r.Run(":" + os.Getenv("APP_PORT")) // listen and serve on 0.0.0.0:8082
 }
 
 func setup() *gin.Engine {
@@ -172,7 +181,7 @@ func getStatus(c *gin.Context) {
 }
 
 func getConnect() (c *hlk_sw16.Connection) {
-	return hlk_sw16.New(host, port)
+	return hlk_sw16.New(os.Getenv("HLK_SW16_HOST"), os.Getenv("HLK_SW16_PORT"))
 }
 
 func setMapRelays(msg []byte) (relays map[int]int) {

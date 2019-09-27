@@ -1,18 +1,12 @@
-FROM golang:1.11.5
-
-# install packeages
-RUN go get -d -v github.com/gin-contrib/cors
-RUN go get -d -v github.com/gin-contrib/gzip
-RUN go get -d -v github.com/gin-contrib/location
-RUN go get -d -v github.com/gin-gonic/gin
-RUN go get -d -v github.com/vitaly-kashtalyan/hlk-sw16
-
-# create a working directory
-WORKDIR /go/src/app
-# add source code
-COPY main.go main.go
-# build main.go
-RUN go build ./main.go
+FROM golang:1.13-alpine
+WORKDIR /app
+ARG HLK_SW16_HOST=192.168.0.200
+ARG HLK_SW16_PORT=8080
+ARG GIN_MODE=release
+ARG APP_PORT=8082
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN go build -o main .
 EXPOSE 8082
-# run the binary
 CMD ["./main"]
