@@ -2,9 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/gzip"
-	"github.com/gin-contrib/location"
 	"github.com/gin-gonic/gin"
 	"github.com/vitaly-kashtalyan/hlk-sw16"
 	"net/http"
@@ -46,11 +43,6 @@ func main() {
 func setup() *gin.Engine {
 	fmt.Println("Starting routes with gin")
 	r := gin.Default()
-	r.Use(
-		cors.Default(),
-		location.Default(),
-		gzip.Gzip(gzip.BestCompression),
-	)
 	initializeRoutes(r)
 	return r
 }
