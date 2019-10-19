@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 )
 
 type httpError struct {
@@ -18,6 +19,11 @@ type httpOkData struct {
 	Status  int         `json:"status" example:"200"`
 	Message string      `json:"message" example:"OK"`
 	Data    interface{} `json:"data" example:"interface{}"`
+}
+
+type Relay struct {
+	Id    int `json:"id"`
+	State int `json:"state"`
 }
 
 func init() {
@@ -48,6 +54,7 @@ func setup() *gin.Engine {
 }
 
 func initializeRoutes(r *gin.Engine) {
+	r.GET("/", getNewStatus)
 	r.GET("/status", getStatus)
 	r.GET("/relays/on", switchOnAll)
 	r.GET("/relays/on/:id", switchOn)
@@ -151,6 +158,35 @@ func switchOnAll(c *gin.Context) {
 	resOkData(c, setMapRelays(msg))
 }
 
+func getNewStatus(c *gin.Context) {
+	for i := 0; i < 10; i++ {
+		hlk := getConnect()
+		if hlk.Err != nil {
+			resError(c, http.StatusServiceUnavailable, hlk.Err)
+			return
+		}
+
+		if err := hlk.StatusRelays(); err != nil {
+			resError(c, http.StatusBadRequest, err)
+			return
+		}
+
+		msg, err := hlk.ReadMessage()
+		if err != nil {
+			resError(c, http.StatusBadRequest, err)
+			return
+		}
+
+		if validateAnswer(msg) {
+			resOkData(c, setNewMapRelays(msg))
+			return
+		} else {
+			time.Sleep(1000)
+		}
+		_ = hlk.Close()
+	}
+}
+
 func getStatus(c *gin.Context) {
 	hlk := getConnect()
 	if hlk.Err != nil {
@@ -176,6 +212,22 @@ func getConnect() (c *hlk_sw16.Connection) {
 	return hlk_sw16.New(os.Getenv("HLK_SW16_HOST"), os.Getenv("HLK_SW16_PORT"))
 }
 
+func setNewMapRelays(msg []byte) (relay []Relay) {
+	for index, element := range msg {
+		if index > 1 && index < 18 {
+			status := int(element)
+			if status == 2 {
+				status = 0
+			}
+			relay = append(relay, Relay{
+				Id:    int(index) - 2,
+				State: status,
+			})
+		}
+	}
+	return
+}
+
 func setMapRelays(msg []byte) (relays map[int]int) {
 	relays = make(map[int]int)
 	for index, element := range msg {
@@ -188,6 +240,17 @@ func setMapRelays(msg []byte) (relays map[int]int) {
 		}
 	}
 	return
+}
+
+func validateAnswer(msg []byte) bool {
+	for index, element := range msg {
+		if index > 1 && index < 18 {
+			if int(element) > 2 {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func resError(ctx *gin.Context, code int, message error) {
